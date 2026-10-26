@@ -1,0 +1,17 @@
+# WordPress core and generated files
+app/backend/html/*
+!app/backend/html/wp-content/
+
+# Inside wp-content, ignore everything except your own code
+app/backend/html/wp-content/*
+!app/backend/html/wp-content/themes/
+app/backend/html/wp-content/themes/*
+!app/backend/html/wp-content/themes/my-theme/
+!app/backend/html/wp-content/plugins/
+app/backend/html/wp-content/plugins/*
+!app/backend/html/wp-content/plugins/my-plugin/
+
+# Secrets
+.env
+*.env
+db_password.txt

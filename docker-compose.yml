@@ -1,0 +1,89 @@
+services:
+  frontend:
+    build: ./app/frontend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - frontend-network
+  backend:
+    build: ./app/backend
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      - frontend-network
+      - backend-network
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "9000"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    secrets:
+      - db_password
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:8080"
+    volumes:
+      - wp_data:/var/www/html:ro
+    networks:
+      - frontend-network
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+  db:
+    build: ./db
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - backend-network
+    secrets:
+      - db_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+networks:
+  frontend-network:
+  backend-network:
+    internal: true
+
+volumes:
+  wp_data:
+  db_data:
+
+secrets:
+  db_password:
+    file: ./db_password.txt
+  
